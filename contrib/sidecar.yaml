@@ -1,54 +1,54 @@
 kind: List
 apiVersion: v1
 items:
-# Create a proxy service account and ensure it will use the route "proxy"
+# Create a cinder-proxy service account and ensure it will use the route "cinder"
 - apiVersion: v1
   kind: ServiceAccount
   metadata:
-    name: proxy
+    name: cinder-proxy
     annotations:
-      serviceaccounts.openshift.io/oauth-redirectreference.primary: '{"kind":"OAuthRedirectReference","apiVersion":"v1","reference":{"kind":"Route","name":"proxy"}}'
-# Create a secure connection to the proxy via a route
+      serviceaccounts.openshift.io/oauth-redirectreference.primary: '{"kind":"OAuthRedirectReference","apiVersion":"v1","reference":{"kind":"Route","name":"cinder"}}'
+# Create a secure connection to the cinder-proxy via a route
 - apiVersion: route.openshift.io/v1
   kind: Route
   metadata:
-    name: proxy
+    name: cinder
   spec:
     to:
-      name: proxy
+      name: cinder
     tls:
       termination: Reencrypt
 - apiVersion: v1
   kind: Service
   metadata:
-    name: proxy
+    name: cinder
     annotations:
-      service.alpha.openshift.io/serving-cert-secret-name: proxy-tls
+      service.alpha.openshift.io/serving-cert-secret-name: cinder-tls
   spec:
     ports:
-    - name: proxy
+    - name: cinder
       port: 443
       targetPort: 8443
     selector:
-      app: proxy
+      app: cinder
 # Launch a proxy as a sidecar
 - apiVersion: extensions/v1beta1
   kind: Deployment
   metadata:
-    name: proxy
+    name: cinder
   spec:
     replicas: 1
     selector:
       matchLabels:
-        app: proxy
+        app: cinder
     template:
       metadata:
         labels:
-          app: proxy
+          app: cinder
       spec:
-        serviceAccountName: proxy
+        serviceAccountName: cinder-proxy
         containers:
-        - name: oauth-proxy
+        - name: cinder-proxy
           image: openshift/oauth-proxy:v1.0.0
           imagePullPolicy: IfNotPresent
           ports:
@@ -57,18 +57,18 @@ items:
           args:
           - --https-address=:8443
           - --provider=openshift
-          - --openshift-service-account=proxy
-          - --upstream=http://localhost:8080
+          - --openshift-service-account=cinder-proxy
+          - --openshift-delegate-urls={"/":{"namespace":"wshed","resource":"cinder","verb":"get"}}
+          - --upstream=http://10.19.115.219:8776
           - --tls-cert=/etc/tls/private/tls.crt
           - --tls-key=/etc/tls/private/tls.key
           - --cookie-secret=SECRET
           volumeMounts:
           - mountPath: /etc/tls/private
-            name: proxy-tls
-
+            name: cinder-tls
         - name: app
           image: openshift/hello-openshift:latest
         volumes:
-        - name: proxy-tls
+        - name: cinder-tls
           secret:
-            secretName: proxy-tls
+            secretName: cinder-tls
