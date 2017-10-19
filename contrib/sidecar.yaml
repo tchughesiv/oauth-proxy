@@ -73,7 +73,7 @@ items:
           - --https-address=:8443
           - --provider=openshift
           - --openshift-service-account=cinder-proxy
-          - --openshift-delegate-urls={"/":{"namespace":"wshed","resource":"cinder","verb":"get"}}
+          - --openshift-delegate-urls={"/v2":{"resource":"projects","verb":"list"}}
           - --upstream=http://10.19.115.219:8776
           - --tls-cert=/etc/tls/private/tls.crt
           - --tls-key=/etc/tls/private/tls.key
@@ -81,10 +81,10 @@ items:
           volumeMounts:
           - mountPath: /etc/tls/private
             name: cinder-tls
-        - name: app
-          image: openshift/hello-openshift:latest
-          ports:
-          - containerPort: 8776
+#        - name: app
+#          image: openshift/hello-openshift:latest
+#          ports:
+#          - containerPort: 8776
         volumes:
         - name: cinder-tls
           secret:
