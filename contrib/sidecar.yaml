@@ -8,6 +8,21 @@ items:
     name: cinder-proxy
     annotations:
       serviceaccounts.openshift.io/oauth-redirectreference.primary: '{"kind":"OAuthRedirectReference","apiVersion":"v1","reference":{"kind":"Route","name":"cinder"}}'
+# Create a cluster role binding to allow for token reviews w/ cinder-proxy sa
+- apiVersion: authorization.openshift.io/v1
+  kind: ClusterRoleBinding
+  metadata:
+    name:  cinder-proxy-binding
+  subjects:
+  - kind: ServiceAccount
+    name: cinder-proxy
+    namespace: wshed
+    apiGroup: rbac.authorization.k8s.io
+  roleRef:
+    kind: ClusterRole
+    name: system:auth-delegator
+    namespace: wshed
+    apiGroup: rbac.authorization.k8s.io
 # Create a secure connection to the cinder-proxy via a route
 - apiVersion: route.openshift.io/v1
   kind: Route
@@ -62,12 +77,14 @@ items:
           - --upstream=http://10.19.115.219:8776
           - --tls-cert=/etc/tls/private/tls.crt
           - --tls-key=/etc/tls/private/tls.key
-          - --cookie-secret=SECRET
+          - --cookie-secret=CINDER
           volumeMounts:
           - mountPath: /etc/tls/private
             name: cinder-tls
         - name: app
           image: openshift/hello-openshift:latest
+          ports:
+          - containerPort: 8776
         volumes:
         - name: cinder-tls
           secret:
